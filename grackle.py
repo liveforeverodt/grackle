@@ -513,8 +513,8 @@ def main():
                 # Draw new coin and put one in your hand on top of the pile
                 pile.play_coin(coin)
                 coin = pile.get_coin()
-                print(f'You drew {coin}: {COINS[coin]}')
                 if coin:
+                    print(f'You drew {coin}: {COINS[coin]}')
                     p_cur.add_coin(coin)
                 if p_cur.coins:
                     print('Now select a coin to put back on top of the pile.')
