@@ -318,15 +318,6 @@ class Pile:
         """
         self.coins.append(coin)
 
-    def put_in_play(self, coin):
-        """Put a coin into the in_play pile.
-
-        Args:
-            coin:
-        """
-        self.remove_coin(coin)
-        self.in_play.append(coin)
-
     def show_coins(self, stack='in_play'):
         """Shows coins that are in a given pile.
 
@@ -514,7 +505,7 @@ def main():
     game_over = False
     while not game_over:
         if not go_again:
-            p_index += 1
+            p_index += 1  # Increment current player
             if p_index >= len(players):
                 p_index = 0
             p_cur = players[p_index]
@@ -526,6 +517,11 @@ def main():
         pile.show_coins('in_play')
         if not p_cur.larder:
             coin = pile.get_coin()
+            ### This would be a place to get a 'full' hand if policy was made
+            ### #  if/while len(p_cur.coins) < ARGS.coins and pile.coins:
+            ### #      add another coin to player's hand
+            ### Use 'if' to gradually increase hand size each turn instead of
+            ###   all at once
             if coin:
                 print(f'You drew {coin}: {COINS[coin]}')
                 if p_cur.add_coin(coin):
