@@ -45,6 +45,12 @@ HAND_MAX = 3
 PLAYER_MIN = 2
 PLAYER_MAX = len(COINS) // HAND_MIN  # Does not take into account removal
 REMOVE_MAX = 5  # Does not take into account other parameters
+SELECTION_MODES = (
+    'first',  # Always selects first coin in opponent's hand
+    'player',  # Player picks which coin in opponent's hand
+    'opponent', # Opponent picks which coin in their hand
+    )
+SELECTION_MODE = SELECTION_MODES[0]
 
 
 class Player:
@@ -74,7 +80,7 @@ class Player:
         while keep_going:
             password = input(f'{self.name}, pick a simple password: ')
             if password:
-                verify = input(f'Please re-enter the password: ')
+                verify = input('Please re-enter the password: ')
                 if verify == password:
                     keep_going = False
                 else:
@@ -106,7 +112,7 @@ class Player:
         print(f'  Shield: {self.shield}')
         print(f'  Larder: {self.larder}')
         if self.note:
-            print(f'  Notes:')
+            print('  Notes:')
             for line in self.note:
                 print(f'  - {line}')
             self.note = []
@@ -216,6 +222,8 @@ class Player:
 
 
 class Pile:
+    """Pile/Stack class
+    """
     def __init__(self, remove=0):
         """Creates a shuffled pile of coins.
 
@@ -337,15 +345,17 @@ def select_from_list(item_list):
     """Select an item from a list, removing it from the list.
 
     If there is only one item in the list, it is automatically chosen.
+    REMEMBER: This removes the chosen item from the list!
 
     Args:
         item_list: List of items from which to select.
 
     Returns:
-        item selected; item_list is updated in place.
+        item selected, or None; item_list is updated in place.
     """
     if len(item_list) == 1:
         item = item_list[0]
+        item_list.remove(item)  # This removes the chosen item from the list!
     else:
         item = None
     while not item:
@@ -357,7 +367,7 @@ def select_from_list(item_list):
         options = list(range(1, len(item_list) + 1))
         try:
             answer = int(input(f'Item to select? {options} '))
-        except:
+        except ValueError:
             answer = 0
         if answer in options:
             item = item_list[answer - 1]
@@ -380,11 +390,10 @@ def select_player(players, exclude=None):
     options = [player.name for player in players if player is not exclude]
     if len(options) > 1:
         player_name = select_from_list(options)
-    else:
+    else:  # There are only 2 players (there has to be at least 2)
         player_name = options[0]
-    for player in players:
-        if player.name == player_name:
-            break
+    options = [player for player in players if player.name == player_name]
+    player = options[0]
     return player
 
 
@@ -410,6 +419,35 @@ def hide_previous(lines=5):
     print(f'{"* hidden " * 10}*\n' * lines)
 
 
+def validate_state(players, pile):
+    """Checks if all coins are accounted for/duplicates/
+
+    Args:
+        players: Players list of all player objects
+        pile: Pile object.
+
+    Returns:
+        True for consistent, False otherwise, with notes.
+    """
+    coins = []
+    for player in players:
+        if player.larder:
+            coins.append(player.larder)
+        if player.coins:
+            coins += player.coins
+    if pile.coins:
+        coins += pile.coins
+    if pile.in_play:
+        coins += pile.in_play
+    print('Coins found:')
+    for coin in coins:
+        print(f'   {coin}')
+    status = len(coins) == len(COINS)
+    if not status:
+        print('*' * 50)
+    return status
+
+
 def parse_args():
     """Augment argument parser with script-specific options.
 
@@ -430,7 +468,12 @@ def parse_args():
     parser.add_argument(
         '-r', '--remove', default=0, type=int,
         choices=range(REMOVE_MAX+1),
-        help='Number of coins to remove.')
+        help='Number of coins to remove prior to game start.')
+    parser.add_argument(
+        '-s', '--selection', default=SELECTION_MODE,
+        choices=SELECTION_MODES,
+        help="How opponent's coin is selected when it is needed."
+            ' This is only needed when coins per hand is greater than 2.')
     args = parser.parse_args()
     return args
 
@@ -556,8 +599,12 @@ def main():
                     if coin:
                         print(f'  Coin {index+1} is: {coin}: {COINS[coin]}')
                         coins.append(coin)
-                print('Now choose the order to put them back on top.')
-                print('Which coin should be put on top first?')
+                if len(coins) > 1:
+                    print('Now choose the order to put them back on top.')
+                    print('Which coin should be put on top first?')
+                    print('(other coin will be placed on top of that one.)')
+                elif len(coins) == 1:
+                    print('There is only one coin left; it will be put back.')
                 if coins:
                     coin = select_from_list(coins)
                     coins.insert(0, coin)
@@ -612,7 +659,9 @@ def main():
                 # Bury a coin in play under pile, removing its effect
                 print('Which in-play coin would you like to bury?')
                 coin2 = select_from_list(pile.in_play)
+                pile.play_coin(coin)
                 if coin2:
+                    print(f'You bury {coin2}: {COINS[coin2]}')
                     pile.bury_coin(coin2)
                     if coin2 == '[shield]':
                         for player in players:
@@ -620,8 +669,7 @@ def main():
                     add_notes(f'{p_cur.name} buried {coin2}', players, p_cur)
                 else:
                     print('There are no coins in play!')
-                pile.play_coin(coin)
-                coin = coin2 = None
+                coin = None
             elif coin == '[sickle]':
                 # Put an opponent's coin in play without any effect
                 pile.play_coin(coin)
@@ -630,7 +678,7 @@ def main():
                     ### choose opponent coin
                     coin = p_oth.get_coin()
                     if coin:
-                        print(f'You kill the coin of your opponent: {coin}')
+                        print(f"You kill {p_oth.name}'s coin: {coin}")
                         pile.play_coin(coin)
                         p_oth.add_note(f'{p_cur.name} killed your {coin}')
                         coin = pile.get_coin()
@@ -648,6 +696,7 @@ def main():
                 for player in players:
                     player.disable_shield()
                 coin = None
+            #validate_state(players, pile)
 
         if pile.unlock_chest():
             print(f'*** {p_cur.name} wins! ***')
