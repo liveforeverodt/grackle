@@ -7,23 +7,26 @@ This supports:
 
 In order to support different hand sizes, need to consider:
 - If player gets to see an opponent's coin and they have more than one:
-    - Does it default to first coin in opponent's hand?
+done- Does it default to first coin in opponent's hand?
         - this is easiest
-    - Does player get to pick which one?
+done- Does player get to pick which one?
         - this is not hard
     - Does the opponent get to pick?
-        - increases number of times control must be passed back and forth
+        - increases times control must be passed back and forth
+First two options are implement(ed/able), but not selectable as of now.
 
-If the hand has more than 2 coins, what happens when there are not enough
+If hand has more than 2 coins, what happens when there are not enough
 coins to keep the hand "full"?
 - If there is no policy on keeping the hand "full" the hand size will
   eventually dwindle to 2.
-    - BUT BUT BUT wind and other cards can increase the pile again, making
+    - BUT BUT wind and other cards can increase the pile again, making
       more coins available
-- Not addressing this issue will reduce game play to hands of HAND_MAX = 2
+- Not addressing this issue will reduce game play to hands of HAND_MAX=2
 """
 __author__ = 'Kevin'
 __copyright__ = 'Copyright (c) 2014-2023, CloudCage'
+__version__ = '0.9.0'
+
 
 import argparse
 import random
@@ -73,7 +76,7 @@ class Player:
         """
         keep_going = True
         while keep_going:
-            new_name = input(f'{name}, what do you want to be called? ({name}) ')
+            new_name = input(f'What do you want to be called? ({name}) ')
             if not new_name:
                 new_name = name
             if prefix:
@@ -99,7 +102,7 @@ class Player:
         self.coins = []
         self.shield = False
         self.larder = None
-        self.note = []  # messages based on previous turn or action
+        self.note = []  # ephemeral messages based on previous actions
 
     def verify(self):
         """Simple check to see if the current player is at the console.
@@ -111,8 +114,25 @@ class Player:
             verified = answer == self.password
         print(f'Welcome back, {self.name}.')
 
-    def show_status(self):
+    def select_coin(self):
+        """Selects coin: player selects coin to play.
+        """
+        coin = None
+        # If there is something in the larder, it MUST be played next
+        if self.larder:
+            coin = self.remove_larder()
+        elif not self.coins:
+            print(f'{self.name} has no coins to play!  Skipping turn.')
+        else:
+            print('Which coin would you like to play?')
+            coin = select_from_list(self.coins)
+        return coin
+
+    def show_status(self, clear_note=True):
         """Show current player status, including ephemeral notes...
+
+        Args:
+            clear_note: Boolean; clears note if True, keeps otherwise.
         """
         print('=' * 80)
         print(f'{self.name} status:')
@@ -123,7 +143,8 @@ class Player:
             print('  Notes:')
             for line in self.note:
                 print(f'  - {line}')
-            self.note = []
+            if clear_note:
+                self.note = []
         print('=' * 80)
 
     def add_note(self, line):
@@ -150,33 +171,68 @@ class Player:
             coin = None
         return coin
 
-    def get_coin(self):
+    def get_coin(self, index=None, by_name=False):
         """Get coin from player, removing it from their coins.
 
+        Arguments are only needed when there is more than one coin held.
+
+        Args:
+            index: Optional integer index of coin requested.
+            by_name: Select coin by name rather than index.
+
         Returns:
-            First coin, if any, otherwise None.
+            A coin object, if any, otherwise None.
         """
-        if self.coins:
-            coin = self.coins[0]
-            self.coins.remove(coin)
+        if by_name and len(self.coins) > 1:
+            coin = select_from_list(self.coins)
         else:
-            coin = None
-            print(f'{self.name} has no coins to get.')
+            index = self.get_coin_index(index)
+            if index is not None:
+                coin = self.coins[index]
+                self.coins.remove(coin)
+            else:
+                coin = None
+                print(f'{self.name} has no coins to get.')
         return coin
 
-    def select_coin(self):
-        """Selects coin: player selects coin to play.
+    def show_coin(self, index=None):
+        """Show a coin given by index, or else ask which coin.
+
+        If there is one coin, just show it regardless of index.
+        If there are no coins, tell that.
+
+        Args:
+            index: Integer index into list of coins in hand.
         """
-        coin = None
-        # If there is something in the larder, it MUST be played next
-        if self.larder:
-            coin = self.remove_larder()
-        elif not self.coins:
-            print(f'{self.name} has no coins to play!  Skipping turn.')
+        index = self.get_coin_index(index)
+        if index is not None:
+            coin = self.coins[index]
+            print(f'{self.name} has {coin}: {COINS[coin]}')
         else:
-            print('Which coin would you like to play?')
-            coin = select_from_list(self.coins)
-        return coin
+            print(f'{self.name} has no coins to show!')
+
+    def get_coin_index(self, index=None):
+        """Gets the index of a coin; used when opponent asks for a coin.
+
+        Returns:
+            Index of coin in hand, or None if there are no coins.
+        """
+        if index:
+            if self.coins and index > len(self.coins):
+                index = None
+            if index < 0 and abs(index) > len(self.coins):
+                index = None
+            if index is None:
+                print('Requested index was out of range.')
+        if index is None:
+            if len(self.coins) > 1:
+                print(f"Which of {self.name}'s coins do you want index of?")
+                options = [index+1 for index in range(len(self.coins))]
+                index = select_from_list(options)
+                index = int(index) - 1
+            elif len(self.coins) == 1:
+                index = 0
+        return index
 
     def enable_shield(self):
         """Enables shield for a player.
@@ -550,7 +606,7 @@ def main():
                     if coin:
                         pile.bury_coin(coin)
                         print("You bury your opponent's coin in the pile.")
-                        ### Should we show the player which coin it was?
+                        ### Should we show the player which coin it was?  No...
                         p_oth.add_note(f'{p_cur.name} buried your {coin}')
                         coin = pile.get_coin()
                         p_oth.add_note(f'You drew replacement: {coin}')
@@ -588,8 +644,9 @@ def main():
                 pile.play_coin(coin)
                 p_oth = select_player(players, p_cur)
                 if not p_oth.shield:
+                    print('Which one of your coins do you want to trade?')
+                    coin = p_cur.get_coin(by_name=True)
                     ### choose opponent coin
-                    coin = p_cur.get_coin()
                     coin2 = p_oth.get_coin()
                     print(f'You swap {coin} for {coin2}')
                     p_oth.add_note(f'{p_cur.name} swapped {coin2} for {coin}')
@@ -637,12 +694,8 @@ def main():
                 pile.play_coin(coin)
                 p_oth = select_player(players, p_cur)
                 if not p_oth.shield:
-                    if p_oth.coins:
-                        ### choose opponent coin
-                        coin = p_oth.coins[0]
-                        print(f'{p_oth.name} has {coin}: {COINS[coin]}')
-                    else:
-                        print(f'{p_oth.name} does not have any coins!')
+                    ### show opponent coin
+                    p_oth.show_coin()
                     p_oth.add_note(f'{p_cur.name} saw your hand')
                 else:
                     print(f'{p_oth.name} is shielded!')
