@@ -13,6 +13,14 @@ In order to support different hand sizes, need to consider:
         - this is not hard
     - Does the opponent get to pick?
         - increases number of times control must be passed back and forth
+
+If the hand has more than 2 coins, what happens when there are not enough
+coins to keep the hand "full"?
+- If there is no policy on keeping the hand "full" the hand size will
+  eventually dwindle to 2.
+    - BUT BUT BUT wind and other cards can increase the pile again, making
+      more coins available
+- Not addressing this issue will reduce game play to hands of HAND_MAX = 2
 """
 __author__ = 'Kevin'
 __copyright__ = 'Copyright (c) 2014-2023, CloudCage'
