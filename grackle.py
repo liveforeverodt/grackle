@@ -492,6 +492,7 @@ def main():
                 pile.play_coin(coin)
                 p_oth = select_player(players, p_cur)
                 if not p_oth.shield:
+                    ### choose opponent coin
                     coin = p_oth.get_coin()
                     if coin:
                         pile.bury_coin(coin)
@@ -499,8 +500,8 @@ def main():
                         ### Should we show the player which coin it was?
                         p_oth.add_note(f'{p_cur.name} buried your {coin}')
                         coin = pile.get_coin()
-                        p_oth.add_coin(coin)
                         p_oth.add_note(f'You drew replacement: {coin}')
+                        p_oth.add_coin(coin)
                 else:
                     print(f'{p_oth.name} is shielded!')
                 coin = None
@@ -534,6 +535,7 @@ def main():
                 pile.play_coin(coin)
                 p_oth = select_player(players, p_cur)
                 if not p_oth.shield:
+                    ### choose opponent coin
                     coin = p_cur.get_coin()
                     coin2 = p_oth.get_coin()
                     print(f'You swap {coin} for {coin2}')
@@ -579,6 +581,7 @@ def main():
                 p_oth = select_player(players, p_cur)
                 if not p_oth.shield:
                     if p_oth.coins:
+                        ### choose opponent coin
                         coin = p_oth.coins[0]
                         print(f'{p_oth.name} has {coin}: {COINS[coin]}')
                     else:
@@ -608,8 +611,8 @@ def main():
             elif coin == '[shovel]':
                 # Bury a coin in play under pile, removing its effect
                 print('Which in-play coin would you like to bury?')
-                if pile.in_play:
-                    coin2 = select_from_list(pile.in_play)
+                coin2 = select_from_list(pile.in_play)
+                if coin2:
                     pile.bury_coin(coin2)
                     if coin2 == '[shield]':
                         for player in players:
@@ -624,14 +627,16 @@ def main():
                 pile.play_coin(coin)
                 p_oth = select_player(players, p_cur)
                 if not p_oth.shield:
+                    ### choose opponent coin
                     coin = p_oth.get_coin()
                     if coin:
-                        pile.play_coin(coin)
                         print(f'You kill the coin of your opponent: {coin}')
+                        pile.play_coin(coin)
                         p_oth.add_note(f'{p_cur.name} killed your {coin}')
                         coin = pile.get_coin()
-                        p_oth.add_coin(coin)
-                        p_oth.add_note(f'You drew replacement: {coin}')
+                        if coin:
+                            p_oth.add_note(f'You drew replacement: {coin}')
+                            p_oth.add_coin(coin)
                 else:
                     print(f'{p_oth.name} is shielded!')
                 coin = None
