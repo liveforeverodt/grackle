@@ -419,7 +419,7 @@ def hide_previous(lines=5):
     print(f'{"* hidden " * 10}*\n' * lines)
 
 
-def validate_state(players, pile):
+def validate_state(players, pile, coin=None):
     """Checks if all coins are accounted for/duplicates/
 
     This is only for debugging.
@@ -432,6 +432,8 @@ def validate_state(players, pile):
         True for consistent, False otherwise, with notes.
     """
     coins = []
+    if coin:
+        coins.append(coin)
     for player in players:
         if player.larder:
             coins.append(player.larder)
@@ -701,7 +703,7 @@ def main():
                     player.disable_shield()
                 coin = None
             if ARGS.debug:
-                validate_state(players, pile)
+                validate_state(players, pile, coin)
 
         if pile.unlock_chest():
             print(f'*** {p_cur.name} wins! ***')
