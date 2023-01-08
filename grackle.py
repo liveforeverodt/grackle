@@ -45,7 +45,7 @@ HAND_MAX = 3
 PLAYER_MIN = 2
 PLAYER_MAX = len(COINS) // HAND_MIN  # Does not take into account removal
 REMOVE_MAX = 5  # Does not take into account other parameters
-SELECTION_MODES = (
+SELECTION_MODES = (  # This does not work yet; only 'first' is implemented
     'first',  # Always selects first coin in opponent's hand
     'player',  # Player picks which coin in opponent's hand
     'opponent', # Opponent picks which coin in their hand
@@ -422,6 +422,8 @@ def hide_previous(lines=5):
 def validate_state(players, pile):
     """Checks if all coins are accounted for/duplicates/
 
+    This is only for debugging.
+
     Args:
         players: Players list of all player objects
         pile: Pile object.
@@ -439,9 +441,7 @@ def validate_state(players, pile):
         coins += pile.coins
     if pile.in_play:
         coins += pile.in_play
-    print('Coins found:')
-    for coin in coins:
-        print(f'   {coin}')
+    print(f'Coins found: {coins}')
     status = len(coins) == len(COINS)
     if not status:
         print('*' * 50)
@@ -474,6 +474,10 @@ def parse_args():
         choices=SELECTION_MODES,
         help="How opponent's coin is selected when it is needed."
             ' This is only needed when coins per hand is greater than 2.')
+
+    parser.add_argument(
+        '-d', '--debug', action='store_true',
+        help='Set debug mode.')
     args = parser.parse_args()
     return args
 
@@ -696,7 +700,8 @@ def main():
                 for player in players:
                     player.disable_shield()
                 coin = None
-            #validate_state(players, pile)
+            if ARGS.debug:
+                validate_state(players, pile)
 
         if pile.unlock_chest():
             print(f'*** {p_cur.name} wins! ***')
