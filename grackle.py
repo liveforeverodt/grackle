@@ -1,27 +1,44 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Grackle game (is that even the name?)
 Coin of the Realm (CotR)
 
 This supports:
 - multiple players
 
-In order to support different hand sizes, need to consider:
-- If player gets to see an opponent's coin and they have more than one:
-done- Does it default to first coin in opponent's hand?
-        - this is easiest
-done- Does player get to pick which one?
-        - this is not hard
-    - Does the opponent get to pick?
-        - increases times control must be passed back and forth
+1: In order to support different hand sizes, need to consider:
+=====
+If player gets to see an opponent's coin and they have more than one:
+  - Does it default to first coin in opponent's hand?
+    - this is easiest
+    - In a physical game, this can easily be forced by opponent
+  - Does player get to pick which one?
+    - this is not hard
+  - Does the opponent get to pick?
+    - increases times control must be passed back and forth
 First two options are implement(ed/able), but not selectable as of now.
 
-If hand has more than 2 coins, what happens when there are not enough
-coins to keep the hand "full"?
-- If there is no policy on keeping the hand "full" the hand size will
-  eventually dwindle to 2.
-    - BUT BUT wind and other cards can increase the pile again, making
-      more coins available
-- Not addressing this issue will reduce game play to hands of HAND_MAX=2
+SUGGESTED REMEDY:
+Always let the player decide which ooponent coin to target.
+This also works better in real life when there is no clear "first" coin.
+There should not be an option here, and this is what is implemented.
+
+2: If a hand has more than 2 coins, what happens when there are not
+   enough coins to keep the hand "full"?
+=====
+If there is no policy on keeping the hand "full" the hand size will
+eventually dwindle to 2.
+  - BUT BUT wind and other cards can increase the pile again, making
+    more coins available
+Not addressing this issue will reduce game play to hands of HAND_MAX=2
+once there are no more cards on the pile.
+
+SUGGESTED REMEDY:
+At the start of a player's turn, they will draw one additional coin if
+they have fewer than a "full" hand and there are coins in the draw pile.
+This is what was implemented, enabled by -f future flag.
+### This would be a place to get a 'full' hand if policy was made
+### #  if len(p_cur.coins) < ARGS.coins and pile.coins:
+### #      add another coin to player's hand
 """
 __author__ = 'Kevin'
 __copyright__ = 'Copyright (c) 2014-2023, CloudCage'
@@ -56,10 +73,10 @@ HAND_MAX = 3
 PLAYER_MIN = 2
 PLAYER_MAX = len(COINS) // HAND_MIN  # Does not take into account removal
 REMOVE_MAX = 5  # Does not take into account other parameters
-SELECTION_MODES = (  # This does not work yet; only 'first' is implemented
+SELECTION_MODES = (  # Not selectable; only 'first' and 'player' implemented
     'first',  # Always selects first coin in opponent's hand
     'player',  # Player picks which coin in opponent's hand
-    'opponent', # Opponent picks which coin in their hand
+    'opponent', # Opponent picks which coin in their hand -- will not do?
     )
 SELECTION_MODE = SELECTION_MODES[0]
 
@@ -533,6 +550,9 @@ def parse_args():
             ' This is only needed when coins per hand is greater than 2.')
 
     parser.add_argument(
+        '-f', '--future', action='store_true',
+        help='Enable future features (hand padding).')
+    parser.add_argument(
         '-d', '--debug', action='store_true',
         help='Set debug mode.')
     args = parser.parse_args()
@@ -571,13 +591,12 @@ def main():
             print(f'{p_cur.name}, please go again.')
             go_again = False
         pile.show_coins('in_play')
+        if ARGS.future and len(p_cur.coins) < ARGS.coins - 1 and pile.coins:
+            coin = pile.get_coin()
+            print(f'Padding your hand with {coin}: {COINS[coin]}')
+            p_cur.add_coin(coin)
         if not p_cur.larder:
             coin = pile.get_coin()
-            ### This would be a place to get a 'full' hand if policy was made
-            ### #  if/while len(p_cur.coins) < ARGS.coins and pile.coins:
-            ### #      add another coin to player's hand
-            ### Use 'if' to gradually increase hand size each turn instead of
-            ###   all at once
             if coin:
                 print(f'You drew {coin}: {COINS[coin]}')
                 if p_cur.add_coin(coin):
