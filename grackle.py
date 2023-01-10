@@ -69,7 +69,7 @@ COINS = {  # Ordering is important!  These two are required at all times:
     '[wind]': 'Shuffle all coins in play into the pile (except wind)',
     }
 HAND_MIN = 2  # number of coins players can have: held coin + drawn coin
-HAND_MAX = 3
+HAND_MAX = 3  #   (not including larder, which is a separate thing)
 PLAYER_MIN = 2
 PLAYER_MAX = len(COINS) // HAND_MIN  # Does not take into account removal
 REMOVE_MAX = 5  # Does not take into account other parameters
@@ -91,9 +91,13 @@ class Player:
             name: Default name to use (can be changed)
             prefix: Optional prefix to preface player name
         """
+        if prefix:
+            show_name = f'{prefix}_{name}'
+        else:
+            show_name = name
         keep_going = True
         while keep_going:
-            new_name = input(f'What do you want to be called? ({name}) ')
+            new_name = input(f'What do you want to be called? ({show_name}) ')
             if not new_name:
                 new_name = name
             if prefix:
@@ -519,6 +523,14 @@ def validate_state(players, pile, coin=None):
     status = len(coins) == len(COINS)
     if not status:
         print('*' * 50)
+        for coin2 in COINS:
+            try:
+                coins.remove(coin2)
+            except ValueError:
+                print(f'{coin2} not present!!!')
+        for coin2 in coins:
+            print(f'Additionsl {coin2}!!!')
+        print('*' * 50)
     return status
 
 
@@ -588,9 +600,11 @@ def main():
             p_cur.verify()
             p_cur.show_status()
         else:
+            print()
             print(f'{p_cur.name}, please go again.')
             go_again = False
         pile.show_coins('in_play')
+        print()
         if ARGS.future and len(p_cur.coins) < ARGS.coins - 1 and pile.coins:
             coin = pile.get_coin()
             print(f'Padding your hand with {coin}: {COINS[coin]}')
@@ -599,11 +613,11 @@ def main():
             coin = pile.get_coin()
             if coin:
                 print(f'You drew {coin}: {COINS[coin]}')
-                if p_cur.add_coin(coin):
-                    pile.put_coin(coin)
+                p_cur.add_coin(coin)
         coin = p_cur.select_coin()
         # Now determine the effects of each coin
         while coin:
+            print()
             print(f'You play {coin}: {COINS[coin]}.')
             add_notes(f'{p_cur.name} played {coin}', players, p_cur)
             if coin == '[chest]':
@@ -654,21 +668,23 @@ def main():
             elif coin == '[ham_hock]':
                 # Draw new coin and put it into your larder for one turn
                 pile.play_coin(coin)
-                print('You draw another coin and put it in the larder.')
+                print('You draw another coin for your larder.')
                 coin = pile.get_coin()
-                coin = p_cur.add_larder(coin)
+                if coin:
+                    p_cur.add_larder(coin)
                 coin = None
             elif coin == '[knife]':
                 # Trade coins with an opponent, if they have one
                 pile.play_coin(coin)
                 p_oth = select_player(players, p_cur)
                 if not p_oth.shield:
-                    print('Which one of your coins do you want to trade?')
+                    if len(p_cur.coins) > 1:
+                        print('Which one of your coins do you want to trade?')
                     coin = p_cur.get_coin(by_name=True)
                     ### choose opponent coin
                     coin2 = p_oth.get_coin()
-                    print(f'You swap {coin} for {coin2}')
-                    p_oth.add_note(f'{p_cur.name} swapped {coin2} for {coin}')
+                    print(f'You trade {coin} for {coin2}')
+                    p_oth.add_note(f'{p_cur.name} traded {coin2} for {coin}')
                     if coin2:
                         p_cur.add_coin(coin2)
                     if coin:
@@ -785,6 +801,8 @@ def main():
             print(f'*** {p_cur.name} wins! ***')
             game_over = True
         elif not go_again:
+            print()
+            p_cur.show_status()
             pile.show_coins('in_play')
             input(f'{p_cur.name}, press return to end your turn.')
     print('Thanks for playing.')
